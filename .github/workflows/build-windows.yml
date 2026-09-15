@@ -72,6 +72,16 @@ jobs:
           }
           Write-Host "El ejecutable arranca y responde correctamente."
 
+      - name: Limpiar datos de la verificación
+        shell: pwsh
+        run: |
+          # El arranque en seco de arriba genera datos-agrosuite (base
+          # sintetica + modelo entrenado) junto al .exe. Sin este paso, ese
+          # directorio queda incluido en el zip y cualquiera que instale la
+          # app arranca con los datos de prueba del CI en vez de una base
+          # limpia.
+          Remove-Item -Recurse -Force "dist\AgroSuite\datos-agrosuite" -ErrorAction SilentlyContinue
+
       - name: Comprimir
         shell: pwsh
         run: Compress-Archive -Path dist\AgroSuite\* -DestinationPath AgroSuite-windows-x64.zip
