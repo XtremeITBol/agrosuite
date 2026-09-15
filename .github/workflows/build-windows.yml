@@ -43,10 +43,19 @@ jobs:
           # Arranque en seco: el launcher debe llegar a levantar el servidor
           # y responder /api/health. Si el bundle perdió un módulo oculto,
           # esto falla acá y no en la PC del usuario.
+          #
+          # En el primer arranque el launcher además genera la base de datos
+          # sintética completa y entrena el modelo de plagas (ver
+          # packaging/launcher.py) ANTES de abrir el puerto, así que se le da
+          # bastante margen (10 min) y se captura su salida a archivo, porque
+          # Start-Process no la muestra en la consola del workflow.
           $env:AGROSUITE_HTTPS = "0"
-          $p = Start-Process -FilePath "dist\AgroSuite\AgroSuite.exe" -PassThru
+          $p = Start-Process -FilePath "dist\AgroSuite\AgroSuite.exe" -PassThru `
+            -RedirectStandardOutput "agrosuite-stdout.log" `
+            -RedirectStandardError "agrosuite-stderr.log"
           $ok = $false
-          foreach ($i in 1..40) {
+          foreach ($i in 1..120) {
+            if ($p.HasExited) { break }
             Start-Sleep -Seconds 5
             try {
               $r = Invoke-WebRequest "http://localhost:8000/api/health" -TimeoutSec 5 -UseBasicParsing
@@ -54,7 +63,13 @@ jobs:
             } catch { }
           }
           Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-          if (-not $ok) { throw "El ejecutable no respondio en /api/health" }
+          if (-not $ok) {
+            Write-Host "----- salida estándar del proceso -----"
+            Get-Content "agrosuite-stdout.log" -ErrorAction SilentlyContinue
+            Write-Host "----- salida de error del proceso -----"
+            Get-Content "agrosuite-stderr.log" -ErrorAction SilentlyContinue
+            throw "El ejecutable no respondio en /api/health"
+          }
           Write-Host "El ejecutable arranca y responde correctamente."
 
       - name: Comprimir
