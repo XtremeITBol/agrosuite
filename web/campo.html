@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AgroSuite Campo — Monitoreo</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1baf7a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="icon" href="/icons/icon-192.png">
+<style>
+:root{
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --border:rgba(11,11,11,.12);
+  --brand:#1baf7a; --s1:#2a78d6;
+  --good:#0ca30c; --warning:#fab219; --critical:#d03b3b;
+  --tap:48px;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --border:rgba(255,255,255,.14);
+    --brand:#199e70; --s1:#3987e5; --good:#0ca30c;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--plane);color:var(--ink);
+  font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;
+  padding-bottom:env(safe-area-inset-bottom)}
+header{position:sticky;top:0;z-index:20;background:var(--brand);color:#fff;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
+.htop{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.01em}
+.status{display:flex;align-items:center;gap:6px;font-size:12.5px;
+  background:rgba(255,255,255,.20);padding:4px 10px;border-radius:999px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:#fff;flex:none}
+.dot.off{background:#ffd7d7}
+main{padding:16px;max-width:560px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px;margin-bottom:14px}
+h2{font-size:14px;margin:0 0 12px;letter-spacing:.02em;text-transform:uppercase;color:var(--muted);font-weight:600}
+label{display:block;font-size:13px;color:var(--ink-2);margin:14px 0 5px;font-weight:500}
+label:first-of-type{margin-top:0}
+select,input,textarea{width:100%;min-height:var(--tap);padding:11px 12px;font:inherit;
+  border:1px solid var(--border);border-radius:10px;background:var(--plane);color:var(--ink)}
+select:focus,input:focus,textarea:focus{outline:2px solid var(--s1);outline-offset:-1px}
+input[type=range]{min-height:auto;padding:0;border:none;background:none;accent-color:var(--brand)}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+button{font:inherit;cursor:pointer;min-height:var(--tap);border-radius:10px;border:1px solid var(--border);
+  background:var(--plane);color:var(--ink);padding:0 14px}
+button.primary{background:var(--brand);color:#fff;border:none;font-weight:600;width:100%;font-size:16px}
+button.ghost{background:none}
+button:disabled{opacity:.5}
+.inc{display:flex;align-items:center;gap:12px}
+.inc output{font-size:28px;font-weight:600;min-width:76px;text-align:right;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.hint{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.45}
+.warn{color:var(--critical);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
+  padding:3px 9px;border-radius:999px;border:1px solid}
+.chip.ok{color:var(--good);border-color:var(--good)}
+.chip.pend{color:var(--warning);border-color:var(--warning)}
+.chip.err{color:var(--critical);border-color:var(--critical)}
+.thumb{width:100%;max-height:220px;object-fit:cover;border-radius:10px;margin-top:10px;
+  border:1px solid var(--border)}
+.qitem{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  padding:11px 0;border-bottom:1px solid var(--grid);font-size:14px}
+.qitem:last-child{border-bottom:none}
+.qitem .meta{font-size:12px;color:var(--muted);margin-top:3px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom));
+  background:var(--ink);color:var(--plane);padding:12px 18px;border-radius:10px;font-size:14px;
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:60;max-width:90vw;text-align:center;
+  box-shadow:0 8px 28px rgba(0,0,0,.25)}
+.toast.show{opacity:1}
+.banner{background:color-mix(in srgb,var(--warning) 16%,transparent);
+  border:1px solid var(--warning);border-radius:10px;padding:11px 13px;font-size:13px;margin-bottom:14px;line-height:1.5}
+.banner.bad{background:color-mix(in srgb,var(--critical) 12%,transparent);border-color:var(--critical)}
+.install{background:var(--s1);color:#fff;border:none;width:100%;margin-bottom:14px;font-weight:600}
+.nav{display:flex;gap:8px;margin-top:16px}
+.nav a{flex:1;text-align:center;padding:12px;border-radius:10px;border:1px solid var(--border);
+  text-decoration:none;color:var(--ink-2);font-size:14px;background:var(--surface)}
+</style>
+</head>
+<body>
+<header>
+  <div class="htop">
+    <h1>AgroSuite Campo</h1>
+    <span class="status" id="status"><span class="dot" id="dot"></span><span id="statusText">—</span></span>
+  </div>
+</header>
+
+<main>
+  <div id="banners"></div>
+  <button class="install" id="install" hidden>Instalar en este teléfono</button>
+
+  <form class="card" id="form">
+    <h2>Nuevo monitoreo</h2>
+
+    <label for="field">Lote</label>
+    <select id="field" required></select>
+    <div class="hint" id="fieldHint"></div>
+
+    <label for="species">Plaga observada</label>
+    <select id="species" required></select>
+    <div class="hint" id="speciesHint"></div>
+
+    <label for="inc">Incidencia — % de plantas afectadas</label>
+    <div class="inc">
+      <input type="range" id="inc" min="0" max="100" step="1" value="0">
+      <output id="incOut">0%</output>
+    </div>
+    <div class="hint" id="incHint"></div>
+
+    <div class="row">
+      <div>
+        <label for="date">Fecha</label>
+        <input type="date" id="date" required>
+      </div>
+      <div>
+        <label for="scout">Monitoreado por</label>
+        <input type="text" id="scout" list="scouts" placeholder="Tu nombre" required>
+        <datalist id="scouts"></datalist>
+      </div>
+    </div>
+
+    <label for="action">Acción tomada</label>
+    <select id="action"></select>
+
+    <label for="photo">Foto (opcional)</label>
+    <input type="file" id="photo" accept="image/*" capture="environment">
+    <img class="thumb" id="thumb" hidden alt="Vista previa de la foto tomada">
+    <div class="hint" id="photoHint"></div>
+
+    <label>Ubicación</label>
+    <div class="row">
+      <button type="button" id="gps">Tomar coordenadas</button>
+      <button type="button" class="ghost" id="gpsClear">Borrar</button>
+    </div>
+    <div class="hint" id="gpsHint">Sin coordenadas.</div>
+
+    <div style="margin-top:20px">
+      <button type="submit" class="primary" id="save">Guardar monitoreo</button>
+    </div>
+    <div class="hint" style="text-align:center;margin-top:10px">
+      Se guarda en el teléfono y se envía solo cuando haya señal.
+    </div>
+  </form>
+
+  <div class="card">
+    <h2>Pendientes de envío <span id="qcount"></span></h2>
+    <div id="queue"><p class="hint">Nada pendiente.</p></div>
+    <div class="row" style="margin-top:14px">
+      <button id="sync">Sincronizar ahora</button>
+    </div>
+    <div class="hint" id="syncHint"></div>
+  </div>
+
+  <div class="nav">
+    <a href="/">Tablero completo</a>
+    <a href="#" id="refreshCat">Actualizar catálogo</a>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/idb-queue.js"></script>
+<script>
+'use strict';
+var Q = self.AgroQueue;
+var CATALOG = null, PHOTO = null, COORDS = null;
+
+var $ = function (id) { return document.getElementById(id); };
+var esc = function (s) { return String(s == null ? '' : s)
+  .replace(/[&<>"]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); };
+
+function toast(msg, ms) {
+  var t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove('show'); }, ms || 2600);
+}
+
+function banner(html, bad) {
+  var d = document.createElement('div');
+  d.className = 'banner' + (bad ? ' bad' : '');
+  d.innerHTML = html;
+  $('banners').appendChild(d);
+}
+
+/* ---------- estado de conexión ---------- */
+function paintStatus() {
+  var on = navigator.onLine;
+  $('dot').className = 'dot' + (on ? '' : ' off');
+  $('statusText').textContent = on ? 'En línea' : 'Sin señal';
+}
+addEventListener('online', function () { paintStatus(); flush(true); });
+addEventListener('offline', paintStatus);
+paintStatus();
+
+/* ---------- catálogo (se guarda para usar sin señal) ---------- */
+function applyCatalog(cat) {
+  CATALOG = cat;
+  var f = $('field');
+  f.innerHTML = '<option value="">Elegir lote…</option>' + cat.fields.map(function (x) {
+    return '<option value="' + x.id + '" data-crop="' + esc(x.crop) + '">' +
+      esc(x.name) + ' — ' + esc(x.crop) + '</option>';
+  }).join('');
+  $('action').innerHTML = '<option value="">Sin acción</option>' +
+    cat.actions.map(function (a) { return '<option>' + esc(a) + '</option>'; }).join('');
+  $('scouts').innerHTML = (cat.scouts || []).map(function (s) {
+    return '<option value="' + esc(s) + '">'; }).join('');
+  refreshSpecies();
+}
+
+function refreshSpecies() {
+  if (!CATALOG) return;
+  var opt = $('field').selectedOptions[0];
+  var crop = opt ? opt.dataset.crop : null;
+  var list = CATALOG.species.filter(function (s) {
+    return !crop || s.hosts.indexOf(crop) >= 0;
+  });
+  // Si el cultivo no tiene hospedantes listados, se muestran todas igual:
+  // el monitoreo a campo puede encontrar algo inesperado y hay que poder
+  // registrarlo.
+  var showing = list.length ? list : CATALOG.species;
+  $('species').innerHTML = '<option value="">Elegir plaga…</option>' + showing.map(function (s) {
+    return '<option value="' + esc(s.species) + '" data-th="' + s.economic_threshold + '">' +
+      esc(s.common) + ' (' + esc(s.species) + ')</option>';
+  }).join('');
+  $('fieldHint').textContent = crop
+    ? 'Cultivo: ' + crop + ' · ' + showing.length + ' plagas relevantes'
+    : '';
+  if (!list.length && crop) {
+    $('fieldHint').textContent += ' · sin hospedantes específicos, se listan todas';
+  }
+  speciesHint();
+}
+
+function speciesHint() {
+  var o = $('species').selectedOptions[0];
+  var th = o && o.dataset.th;
+  $('speciesHint').textContent = th
+    ? 'Umbral de daño económico: ' + th + '% de incidencia.' : '';
+  incHint();
+}
+
+function incHint() {
+  var o = $('species').selectedOptions[0];
+  var th = o && o.dataset.th ? +o.dataset.th : null;
+  var v = +$('inc').value;
+  var el = $('incHint');
+  if (th == null) { el.textContent = ''; return; }
+  if (v >= th) {
+    el.innerHTML = '<span class="warn">Supera el umbral de ' + th +
+      '%: corresponde evaluar control.</span>';
+  } else {
+    el.textContent = 'Por debajo del umbral de ' + th + '%.';
+  }
+}
+
+function loadCatalog(force) {
+  return Q.getMeta('catalog').then(function (cached) {
+    if (cached && !force) applyCatalog(cached);
+    return fetch('/api/field/catalog').then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (cat) {
+      applyCatalog(cat);
+      return Q.setMeta('catalog', cat);
+    }).catch(function () {
+      if (!cached) {
+        banner('No se pudo descargar el catálogo de lotes y no hay copia guardada. ' +
+               'Conectate una vez a la red de la finca para habilitar el uso sin señal.', true);
+      } else {
+        toast('Usando el catálogo guardado en el teléfono.');
+      }
+    });
+  });
+}
+
+/* ---------- foto ---------- */
+$('photo').addEventListener('change', function (e) {
+  var file = e.target.files && e.target.files[0];
+  if (!file) { PHOTO = null; $('thumb').hidden = true; $('photoHint').textContent = ''; return; }
+  if (file.size > 6 * 1024 * 1024) {
+    $('photoHint').innerHTML = '<span class="warn">La foto pesa más de 6 MB. Se reducirá al guardar.</span>';
+  }
+  var r = new FileReader();
+  r.onload = function () {
+    // Se reescala en el dispositivo: una foto de 12 MP son ~5 MB que viajarían
+    // por la red de la finca sin aportar nada al diagnóstico.
+    shrink(r.result, 1280).then(function (small) {
+      PHOTO = small;
+      $('thumb').src = small; $('thumb').hidden = false;
+      $('photoHint').textContent = 'Foto lista (' + Math.round(small.length / 1365) + ' KB aprox.).';
+    });
+  };
+  r.readAsDataURL(file);
+});
+
+function shrink(dataUrl, maxSide) {
+  return new Promise(function (resolve) {
+    var img = new Image();
+    img.onload = function () {
+      var s = Math.min(1, maxSide / Math.max(img.width, img.height));
+      if (s === 1 && dataUrl.length < 900000) return resolve(dataUrl);
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = function () { resolve(dataUrl); };
+    img.src = dataUrl;
+  });
+}
+
+/* ---------- GPS ---------- */
+$('gps').addEventListener('click', function () {
+  if (!navigator.geolocation) {
+    $('gpsHint').innerHTML = '<span class="warn">Este navegador no expone geolocalización.</span>';
+    return;
+  }
+  if (!isSecure()) {
+    $('gpsHint').innerHTML = '<span class="warn">El GPS requiere HTTPS. Abrí la app por ' +
+      'https:// después de instalar el certificado de la finca.</span>';
+    return;
+  }
+  $('gpsHint').textContent = 'Buscando señal GPS…';
+  navigator.geolocation.getCurrentPosition(function (p) {
+    COORDS = { lat: +p.coords.latitude.toFixed(6), lon: +p.coords.longitude.toFixed(6) };
+    $('gpsHint').textContent = COORDS.lat + ', ' + COORDS.lon +
+      ' (±' + Math.round(p.coords.accuracy) + ' m)';
+  }, function (err) {
+    $('gpsHint').innerHTML = '<span class="warn">No se pudo obtener la ubicación: ' +
+      esc(err.message) + '</span>';
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+});
+$('gpsClear').addEventListener('click', function () {
+  COORDS = null; $('gpsHint').textContent = 'Sin coordenadas.';
+});
+
+function isSecure() {
+  return self.isSecureContext === true;
+}
+
+/* ---------- guardar ---------- */
+$('form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var obs = {
+    field_id: +$('field').value,
+    species: $('species').value,
+    incidence_pct: +$('inc').value,
+    date: $('date').value,
+    scouted_by: $('scout').value.trim(),
+    action_taken: $('action').value || null,
+    photo: PHOTO || null
+  };
+  if (!obs.field_id || !obs.species || !obs.scouted_by) {
+    toast('Faltan lote, plaga o tu nombre.'); return;
+  }
+  if (COORDS) { obs.lat = COORDS.lat; obs.lon = COORDS.lon; }
+
+  $('save').disabled = true;
+  Q.enqueue(obs).then(function () {
+    try { localStorage.setItem('agrosuite_scout', obs.scouted_by); } catch (_) {}
+    resetForm();
+    return renderQueue();
+  }).then(function () {
+    toast(navigator.onLine ? 'Guardado. Enviando…' : 'Guardado en el teléfono.');
+    return flush(true);
+  }).catch(function (err) {
+    toast('No se pudo guardar: ' + err.message, 4000);
+  }).finally(function () { $('save').disabled = false; });
+});
+
+function resetForm() {
+  $('inc').value = 0; $('incOut').textContent = '0%';
+  $('photo').value = ''; PHOTO = null; $('thumb').hidden = true; $('photoHint').textContent = '';
+  $('species').selectedIndex = 0; $('action').selectedIndex = 0;
+  speciesHint();   // limpia también el umbral, que si no queda del registro anterior
+  // Se conservan lote, fecha, nombre y GPS: en un monitoreo se cargan varias
+  // plagas seguidas del mismo lote, y volver a tipear todo cada vez es hostil.
+}
+
+/* ---------- cola y sincronización ---------- */
+function renderQueue() {
+  return Q.listQueue().then(function (rows) {
+    $('qcount').innerHTML = rows.length
+      ? '<span class="chip pend">' + rows.length + '</span>'
+      : '<span class="chip ok">0</span>';
+    if (!rows.length) { $('queue').innerHTML = '<p class="hint">Nada pendiente.</p>'; return; }
+    var names = {};
+    (CATALOG ? CATALOG.fields : []).forEach(function (f) { names[f.id] = f.name; });
+    var common = {};
+    (CATALOG ? CATALOG.species : []).forEach(function (s) { common[s.species] = s.common; });
+    $('queue').innerHTML = rows.sort(function (a, b) {
+      return a.queued_at < b.queued_at ? 1 : -1;
+    }).map(function (r) {
+      return '<div class="qitem"><div>' +
+        '<b>' + esc(common[r.species] || r.species) + '</b> — ' + r.incidence_pct + '%' +
+        '<div class="meta">' + esc(names[r.field_id] || ('Lote ' + r.field_id)) + ' · ' +
+        esc(r.date) + (r.lat ? ' · GPS' : '') + (r.photo ? ' · foto' : '') +
+        (r.attempts ? ' · ' + r.attempts + ' intento(s)' : '') + '</div></div>' +
+        '<button class="ghost" data-del="' + esc(r.client_uuid) + '" ' +
+        'aria-label="Descartar" style="min-height:36px;padding:0 10px">✕</button></div>';
+    }).join('');
+    $('queue').querySelectorAll('[data-del]').forEach(function (b) {
+      b.onclick = function () {
+        Q.removeMany([b.dataset.del]).then(renderQueue).then(function () {
+          toast('Descartado.');
+        });
+      };
+    });
+  });
+}
+
+function flush(quiet) {
+  if (!navigator.onLine) { if (!quiet) toast('Sin señal. Se enviará al reconectar.'); return Promise.resolve(); }
+  // Si hay Background Sync, se delega al service worker: así se completa
+  // incluso si el usuario cierra la app.
+  if (navigator.serviceWorker && navigator.serviceWorker.ready && 'SyncManager' in self) {
+    return navigator.serviceWorker.ready.then(function (reg) {
+      return reg.sync.register('sync-observations');
+    }).catch(function () { return Q.flushQueue().then(afterSync); });
+  }
+  return Q.flushQueue().then(afterSync);
+}
+
+function afterSync(r) {
+  renderQueue();
+  if (!r) return;
+  if (r.offline) { $('syncHint').textContent = 'Sin conexión con el servidor.'; return; }
+  var parts = [];
+  if (r.accepted) parts.push(r.accepted + ' enviada(s)');
+  if (r.duplicated) parts.push(r.duplicated + ' ya estaban');
+  if (r.rejected) parts.push(r.rejected + ' rechazada(s)');
+  if (parts.length) toast(parts.join(' · '));
+  $('syncHint').textContent = 'Última sincronización: ' + new Date().toLocaleTimeString('es-BO');
+  if (r.rejected && r.detail && r.detail.length) {
+    banner('Se descartaron ' + r.rejected + ' observación(es) por datos inválidos: ' +
+      esc(r.detail.map(function (d) { return d.error; }).join(' | ')), true);
+  }
+}
+
+$('sync').addEventListener('click', function () {
+  $('sync').disabled = true;
+  flush(false).finally(function () {
+    setTimeout(function () { $('sync').disabled = false; renderQueue(); }, 700);
+  });
+});
+
+$('refreshCat').addEventListener('click', function (e) {
+  e.preventDefault();
+  loadCatalog(true).then(function () { toast('Catálogo actualizado.'); });
+});
+
+/* ---------- listeners de formulario ---------- */
+$('field').addEventListener('change', refreshSpecies);
+$('species').addEventListener('change', speciesHint);
+$('inc').addEventListener('input', function () {
+  $('incOut').textContent = $('inc').value + '%'; incHint();
+});
+
+/* ---------- service worker e instalación ---------- */
+if ('serviceWorker' in navigator && isSecure()) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function (e) {
+    console.warn('No se pudo registrar el service worker:', e);
+  });
+  navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'sync-result') afterSync(e.data.result);
+  });
+} else if (!isSecure()) {
+  banner('Estás en <b>modo limitado</b> porque la conexión no es segura (http). ' +
+    'Podés cargar monitoreos y se guardan en el teléfono, pero no hay instalación ' +
+    'como app, ni GPS, ni funcionamiento sin señal. ' +
+    'Instalá el certificado de la finca (<a href="/agrosuite-ca.crt">descargar</a>) ' +
+    'y volvé a entrar por https://');
+}
+
+var deferredPrompt = null;
+addEventListener('beforeinstallprompt', function (e) {
+  e.preventDefault(); deferredPrompt = e; $('install').hidden = false;
+});
+$('install').addEventListener('click', function () {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.finally(function () {
+    deferredPrompt = null; $('install').hidden = true;
+  });
+});
+addEventListener('appinstalled', function () { $('install').hidden = true; });
+
+/* ---------- arranque ---------- */
+$('date').value = new Date().toISOString().slice(0, 10);
+$('date').max = $('date').value;
+try {
+  var last = localStorage.getItem('agrosuite_scout');
+  if (last) $('scout').value = last;
+} catch (_) {}
+loadCatalog(false).then(renderQueue).then(function () { return flush(true); });
+setInterval(function () { if (navigator.onLine) flush(true); }, 120000);
+</script>
+</body>
+</html>

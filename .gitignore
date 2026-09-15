@@ -1,0 +1,22 @@
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.joblib
+data/certs/
+data/media/
+datos-agrosuite/
+build/
+dist/
+build-venv/
+__pycache__/
+*.pyc
+*.spec.bak
+.venv/
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+*.keystore
+*.jks

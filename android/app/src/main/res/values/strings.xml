@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AgroSuite Campo</string>
+
+    <!-- Configuración -->
+    <string name="setup_title">Conectar con la finca</string>
+    <string name="setup_help">Escribí la dirección que muestra AgroSuite en la pantalla de la computadora de la oficina. Ambos equipos tienen que estar en la misma red WiFi.</string>
+    <string name="setup_hint">https://192.168.1.100:8443</string>
+    <string name="setup_test">Probar conexión</string>
+    <string name="setup_save">Guardar y entrar</string>
+    <string name="setup_checking">Probando…</string>
+    <string name="setup_ok">Conexión correcta. El servidor respondió.</string>
+    <string name="setup_empty">Escribí la dirección del servidor.</string>
+    <string name="setup_bad_url">La dirección no es válida.</string>
+    <string name="setup_unreachable">No se pudo conectar: %1$s\n\nVerificá que la computadora esté encendida con AgroSuite abierto y que el teléfono esté en la misma red WiFi.</string>
+    <string name="setup_bad_response">El servidor respondió %1$d. ¿Es la dirección correcta?</string>
+    <string name="setup_ssl">El certificado de la finca todavía no está instalado en este teléfono.\n\nAbrí la dirección terminada en /agrosuite-ca.crt desde el navegador, descargá el archivo e instalalo en Ajustes › Seguridad › Cifrado y credenciales › Instalar un certificado › Certificado de CA.</string>
+    <string name="setup_cert_note">La primera vez hay que instalar el certificado de la finca en este teléfono. Es un paso único: después la app entra directo.</string>
+
+    <!-- Diálogos -->
+    <string name="cert_title">Falta el certificado de la finca</string>
+    <string name="cert_body">No se pudo verificar la identidad de %1$s.\n\nInstalá el certificado de la finca en este teléfono: Ajustes › Seguridad › Cifrado y credenciales › Instalar un certificado › Certificado de CA.</string>
+    <string name="cert_download">Descargar certificado</string>
+    <string name="conn_title">Sin conexión con el servidor</string>
+    <string name="conn_body">No se pudo conectar con %1$s.\n\nDetalle: %2$s\n\nVerificá que la computadora de la oficina esté encendida con AgroSuite abierto y que estés en la misma red WiFi.</string>
+    <string name="retry">Reintentar</string>
+    <string name="change_server">Cambiar servidor</string>
+
+    <!-- Permisos -->
+    <string name="need_location">Para registrar las coordenadas del punto muestreado hay que permitir el acceso a la ubicación.</string>
+    <string name="no_camera_app">No se encontró una app de cámara o galería en este teléfono.</string>
+</resources>

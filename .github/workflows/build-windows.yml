@@ -1,0 +1,74 @@
+name: Compilar AgroSuite.exe
+
+# PyInstaller no hace compilación cruzada: un ejecutable de Windows sólo se
+# genera desde Windows. Este workflow usa un runner de Windows de GitHub
+# (gratis en repositorios públicos) para producir el .exe sin necesidad de
+# tener una máquina Windows a mano.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:        # también se puede disparar a mano desde la pestaña Actions
+
+jobs:
+  build:
+    runs-on: windows-latest
+    # Necesario para que softprops/action-gh-release pueda crear la release:
+    # en los repositorios nuevos el GITHUB_TOKEN viene de sólo lectura.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+
+      - name: Instalar dependencias
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Pruebas antes de empaquetar
+        run: python -m unittest discover -s tests -v
+
+      - name: Empaquetar
+        run: pyinstaller --clean --noconfirm packaging/agrosuite.spec
+
+      - name: Verificar que el ejecutable arranca
+        shell: pwsh
+        run: |
+          # Arranque en seco: el launcher debe llegar a levantar el servidor
+          # y responder /api/health. Si el bundle perdió un módulo oculto,
+          # esto falla acá y no en la PC del usuario.
+          $env:AGROSUITE_HTTPS = "0"
+          $p = Start-Process -FilePath "dist\AgroSuite\AgroSuite.exe" -PassThru
+          $ok = $false
+          foreach ($i in 1..40) {
+            Start-Sleep -Seconds 5
+            try {
+              $r = Invoke-WebRequest "http://localhost:8000/api/health" -TimeoutSec 5 -UseBasicParsing
+              if ($r.StatusCode -eq 200) { $ok = $true; break }
+            } catch { }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "El ejecutable no respondio en /api/health" }
+          Write-Host "El ejecutable arranca y responde correctamente."
+
+      - name: Comprimir
+        shell: pwsh
+        run: Compress-Archive -Path dist\AgroSuite\* -DestinationPath AgroSuite-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AgroSuite-windows-x64
+          path: AgroSuite-windows-x64.zip
+          retention-days: 30
+
+      - name: Publicar en la release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: AgroSuite-windows-x64.zip

@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgroSuite — Tablero de operaciones</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231baf7a'/%3E%3Cpath d='M16 25V12M16 12c0-3.5 2.6-6 6.5-6 .3 3.9-2.3 6.6-6.5 6.6zM16 17c0-3.2-2.4-5.5-6-5.5-.3 3.6 2.1 6 6 6z' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<style>
+:root{
+  color-scheme: light;
+  --plane:#f9f9f7; --surface:#fcfcfb;
+  --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --up:#006300;
+  --pole-lo:#e34948; --pole-hi:#2a78d6; --pole-mid:#f0efec;
+  --radius:10px;
+  --font:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19;
+    --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+    --up:#0ca30c; --pole-lo:#e66767; --pole-hi:#3987e5; --pole-mid:#383835;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19;
+  --ink:#fff; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --up:#0ca30c; --pole-lo:#e66767; --pole-hi:#3987e5; --pole-mid:#383835;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font:14px/1.5 var(--font);
+     -webkit-font-smoothing:antialiased}
+.wrap{max-width:1240px;margin:0 auto;padding:24px 16px 64px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;margin-bottom:20px}
+h1{font-size:21px;margin:0;letter-spacing:-.01em}
+h1 span{color:var(--muted);font-weight:400;font-size:14px;margin-left:8px}
+h2{font-size:15px;margin:0 0 2px;letter-spacing:-.005em}
+.sub{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+button{font:inherit;cursor:pointer}
+.theme-btn{background:var(--surface);color:var(--ink-2);border:1px solid var(--border);
+  border-radius:8px;padding:6px 12px}
+nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:22px}
+nav button{background:none;border:none;border-bottom:2px solid transparent;padding:9px 14px;
+  color:var(--ink-2);border-radius:6px 6px 0 0}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--s1);font-weight:600}
+nav button:hover{background:var(--border)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;margin-bottom:16px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(168px,1fr))}
+.tile .label{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em}
+.tile .value{font-size:26px;font-weight:600;letter-spacing:-.02em;margin:4px 0 2px}
+.tile .unit{font-size:13px;color:var(--muted);font-weight:400;margin-left:3px}
+.tile .delta{font-size:12px;color:var(--ink-2)}
+.delta.pos{color:var(--up)} .delta.neg{color:var(--critical)}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th{text-align:left;color:var(--muted);font-weight:500;font-size:11.5px;text-transform:uppercase;
+   letter-spacing:.04em;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--grid)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--border)}
+.num{text-align:right}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;
+  padding:2px 8px;border-radius:999px;border:1px solid;white-space:nowrap}
+.badge.alto,.badge.critico{color:var(--critical);border-color:var(--critical);background:color-mix(in srgb,var(--critical) 10%,transparent)}
+.badge.medio,.badge.reponer{color:var(--serious);border-color:var(--serious);background:color-mix(in srgb,var(--serious) 12%,transparent)}
+.badge.bajo,.badge.ok{color:var(--good);border-color:var(--good);background:color-mix(in srgb,var(--good) 10%,transparent)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin:2px 0 10px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+svg{display:block;max-width:100%;overflow:visible}
+.gridline{stroke:var(--grid);stroke-width:1}
+.axisline{stroke:var(--axis);stroke-width:1}
+.tick{fill:var(--muted);font-size:11px}
+.dlabel{fill:var(--ink-2);font-size:11px;font-variant-numeric:tabular-nums}
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);
+  border:1px solid var(--border);border-radius:8px;padding:8px 11px;font-size:12.5px;
+  box-shadow:0 6px 22px rgba(0,0,0,.16);opacity:0;transition:opacity .1s;z-index:50;max-width:260px}
+.tip b{display:block;margin-bottom:3px;font-size:12px}
+.tip .row{display:flex;justify-content:space-between;gap:16px;font-variant-numeric:tabular-nums}
+.tip .row span:last-child{font-weight:600}
+.chat{display:flex;flex-direction:column;height:440px}
+.msgs{flex:1;overflow-y:auto;padding:6px 2px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:78%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.45}
+.msg.user{align-self:flex-end;background:var(--s1);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--border);border-bottom-left-radius:4px}
+.msg .meta{font-size:10.5px;opacity:.75;margin-top:5px;font-variant-numeric:tabular-nums}
+.composer{display:flex;gap:8px;margin-top:12px}
+.composer input{flex:1;padding:10px 13px;border-radius:9px;border:1px solid var(--border);
+  background:var(--plane);color:var(--ink);font:inherit}
+.composer button{padding:10px 18px;border-radius:9px;border:none;background:var(--s1);color:#fff;font-weight:600}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chips button{font-size:12px;padding:5px 11px;border-radius:999px;border:1px solid var(--border);
+  background:var(--plane);color:var(--ink-2)}
+.chips button:hover{border-color:var(--s1);color:var(--s1)}
+.note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5}
+.spin{color:var(--muted);padding:26px 0;text-align:center;font-size:13px}
+.err{color:var(--critical);font-size:13px;padding:12px;border:1px solid var(--critical);border-radius:8px}
+.bar-track{background:var(--grid);border-radius:3px;height:6px;overflow:hidden;min-width:56px}
+.bar-fill{height:100%;border-radius:3px}
+details summary{cursor:pointer;color:var(--ink-2);font-size:12.5px;padding:4px 0}
+@media(max-width:640px){.wrap{padding:16px 12px 48px}.tile .value{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>AgroSuite <span>Tablero de operaciones agrícolas</span></h1>
+    <button class="theme-btn" id="theme">Cambiar tema</button>
+  </header>
+
+  <nav role="tablist">
+    <button role="tab" data-tab="resumen" aria-selected="true">Resumen</button>
+    <button role="tab" data-tab="cadena" aria-selected="false">Cadena de suministro</button>
+    <button role="tab" data-tab="plagas" aria-selected="false">Plagas</button>
+    <button role="tab" data-tab="produccion" aria-selected="false">Producción</button>
+    <button role="tab" data-tab="chat" aria-selected="false">Atención al cliente</button>
+  </nav>
+
+  <div id="panel"><div class="spin">Cargando…</div></div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const API = location.origin;
+const tip = document.getElementById('tip');
+const fmt = (n,d=1)=> n==null||isNaN(n) ? '—' : Number(n).toLocaleString('es-BO',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt0 = n => fmt(n,0);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cache = {};
+
+async function get(path){
+  if(cache[path]) return cache[path];
+  const r = await fetch(API+path);
+  if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error || r.statusText);
+  return cache[path] = await r.json();
+}
+async function post(path, body){
+  const r = await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},
+    body: body?JSON.stringify(body):undefined});
+  if(!r.ok) throw new Error((await r.json().catch(()=>({}))).error || r.statusText);
+  return r.json();
+}
+
+/* ---------- tooltip ---------- */
+function showTip(e, html){
+  tip.innerHTML = html; tip.style.opacity = 1;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 14, y = e.clientY - r.height - 12;
+  if(x + r.width > innerWidth - 8) x = e.clientX - r.width - 14;
+  if(y < 8) y = e.clientY + 18;
+  tip.style.left = x+'px'; tip.style.top = y+'px';
+}
+const hideTip = ()=> tip.style.opacity = 0;
+
+/* ---------- gráfico de líneas (una serie, con crosshair) ---------- */
+function lineChart(data, {x, y, color='var(--s1)', unit='', label='', height=210, decimals=1}){
+  if(!data.length) return '<p class="sub">Sin datos.</p>';
+  const W=720, H=height, m={t:14,r:16,b:30,l:52};
+  const iw=W-m.l-m.r, ih=H-m.t-m.b;
+  const vals=data.map(d=>+d[y]);
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  if(lo===hi){lo=lo-1;hi=hi+1;} else {const p=(hi-lo)*.12; lo=Math.max(0,lo-p); hi=hi+p;}
+  const px=i=>m.l+(data.length===1?iw/2:i*iw/(data.length-1));
+  const py=v=>m.t+ih-(v-lo)/(hi-lo)*ih;
+  const ticks=4, tv=[...Array(ticks+1)].map((_,i)=>lo+(hi-lo)*i/ticks);
+  const path=data.map((d,i)=>`${i?'L':'M'}${px(i).toFixed(1)},${py(+d[y]).toFixed(1)}`).join('');
+  const area=`${path}L${px(data.length-1).toFixed(1)},${m.t+ih}L${px(0).toFixed(1)},${m.t+ih}Z`;
+  const step=Math.ceil(data.length/7);
+  const id='g'+Math.random().toString(36).slice(2,8);
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
+  <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity=".18"/>
+    <stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+  ${tv.map(v=>`<line class="gridline" x1="${m.l}" x2="${W-m.r}" y1="${py(v).toFixed(1)}" y2="${py(v).toFixed(1)}"/>
+    <text class="tick" x="${m.l-8}" y="${(py(v)+4).toFixed(1)}" text-anchor="end">${fmt0(v)}</text>`).join('')}
+  <line class="axisline" x1="${m.l}" x2="${W-m.r}" y1="${m.t+ih}" y2="${m.t+ih}"/>
+  <path d="${area}" fill="url(#${id})"/>
+  <path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  ${data.map((d,i)=>i%step===0||i===data.length-1
+    ? `<text class="tick" x="${px(i).toFixed(1)}" y="${H-8}" text-anchor="middle">${esc(String(d[x]).slice(0,7))}</text>`:'').join('')}
+  ${data.map((d,i)=>`<g class="pt"><circle cx="${px(i).toFixed(1)}" cy="${py(+d[y]).toFixed(1)}" r="3.5"
+      fill="${color}" stroke="var(--surface)" stroke-width="2" opacity="0"/>
+    <rect x="${(px(i)-iw/data.length/2).toFixed(1)}" y="${m.t}" width="${(iw/data.length).toFixed(1)}" height="${ih}"
+      fill="transparent" data-i="${i}" data-lbl="${esc(String(d[x]))}" data-val="${d[y]}"/></g>`).join('')}
+</svg>`;
+}
+function wireLine(root, unit, decimals=1){
+  root.querySelectorAll('svg .pt').forEach(g=>{
+    const dot=g.querySelector('circle'), hit=g.querySelector('rect');
+    hit.addEventListener('mousemove',e=>{
+      dot.setAttribute('opacity','1');
+      showTip(e,`<b>${esc(hit.dataset.lbl)}</b><div class="row"><span>Valor</span><span>${fmt(+hit.dataset.val,decimals)} ${esc(unit)}</span></div>`);
+    });
+    hit.addEventListener('mouseleave',()=>{dot.setAttribute('opacity','0');hideTip();});
+  });
+}
+
+/* ---------- barras horizontales divergentes alrededor de 100% ---------- */
+/* Se codifica la DESVIACIÓN respecto del objetivo sobre un eje simétrico, no
+   el valor absoluto desde cero: así la longitud de la barra es la magnitud del
+   desvío y los dos lados son comparables entre sí. */
+function divergingBars(rows){
+  if(!rows.length) return '<p class="sub">Sin datos.</p>';
+  const W=720, rowH=25, m={t:34,r:64,b:10,l:196};
+  const H=m.t+rows.length*rowH+m.b;
+  const iw=W-m.l-m.r, mid=m.l+iw/2, half=iw/2;
+  const span=Math.max(10, ...rows.map(r=>Math.abs(r.value-100)));
+  const sx=d=>mid+d/span*half;
+  const ticks=[-span,-span/2,0,span/2,span];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Desvío del rinde respecto del objetivo, por lote">
+  ${ticks.map(d=>{const x=sx(d); return `<line class="gridline" x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${m.t}" y2="${H-m.b}"/>
+     <text class="tick" x="${x.toFixed(1)}" y="${m.t-19}" text-anchor="middle">${d>0?'+':''}${fmt0(d)}%</text>`;}).join('')}
+  <line x1="${mid.toFixed(1)}" x2="${mid.toFixed(1)}" y1="${m.t-4}" y2="${H-m.b}" stroke="var(--axis)" stroke-width="1.5"/>
+  <text class="tick" x="${mid.toFixed(1)}" y="${m.t-5}" text-anchor="middle" style="font-weight:600;fill:var(--ink-2)">objetivo</text>
+  ${rows.map((r,i)=>{
+    const y=m.t+i*rowH+3, h=rowH-9, d=r.value-100, below=d<0;
+    const c=below?'var(--pole-lo)':'var(--pole-hi)';
+    const x0=below?sx(d):mid, x1=below?mid:sx(d);
+    const w=Math.max(2,x1-x0);
+    // La etiqueta va DENTRO de la barra si entra (evita invadir la columna de
+    // nombres a la izquierda); si la barra es corta, va por fuera.
+    const inside = w >= 52;
+    const lx = inside ? (below ? x0+7 : x1-7) : (below ? x0-7 : x1+7);
+    const anchor = inside ? (below?'start':'end') : (below?'end':'start');
+    const fill = inside ? '#fff' : 'var(--ink-2)';
+    return `<g class="hb" data-name="${esc(r.name)}" data-sub="${esc(r.sub||'')}" data-val="${r.value}" data-extra="${esc(r.extra||'')}">
+      <rect x="0" y="${y-3}" width="${W}" height="${rowH-3}" fill="transparent"/>
+      <text class="dlabel" x="${m.l-10}" y="${y+h/2+4}" text-anchor="end">${esc(r.name.length>28?r.name.slice(0,27)+'…':r.name)}</text>
+      <rect x="${x0.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${h}" rx="3" fill="${c}"/>
+      <text class="dlabel" x="${lx.toFixed(1)}" y="${y+h/2+4}" text-anchor="${anchor}" fill="${fill}" style="font-weight:600">${fmt0(r.value)}%</text>
+    </g>`;}).join('')}
+</svg>`;
+}
+function wireBars(root){
+  root.querySelectorAll('svg .hb').forEach(g=>{
+    g.addEventListener('mousemove',e=>showTip(e,
+      `<b>${esc(g.dataset.name)}</b>${g.dataset.sub?`<div class="row"><span>${esc(g.dataset.sub)}</span><span></span></div>`:''}
+       <div class="row"><span>Cumplimiento</span><span>${fmt0(+g.dataset.val)}%</span></div>
+       ${g.dataset.extra?`<div class="row"><span>${esc(g.dataset.extra)}</span><span></span></div>`:''}`));
+    g.addEventListener('mouseleave',hideTip);
+  });
+}
+
+/* ---------- tiles ---------- */
+function tile(label, value, unit, delta, lowerBetter){
+  let d='';
+  if(delta!=null){
+    const good = lowerBetter ? delta<0 : delta>0;
+    const arrow = delta>0?'▲':delta<0?'▼':'—';
+    d=`<div class="delta ${delta===0?'':good?'pos':'neg'}">${arrow} ${fmt(Math.abs(delta))}% vs. período anterior</div>`;
+  }
+  return `<div class="card tile"><div class="label">${esc(label)}</div>
+    <div class="value">${value}<span class="unit">${esc(unit||'')}</span></div>${d}</div>`;
+}
+
+/* ============================ PESTAÑAS ============================ */
+const TABS = {};
+
+TABS.resumen = async el => {
+  const [k, risk, inv, bot] = await Promise.all([
+    get('/api/analytics/kpis'), get('/api/pest/risk'),
+    get('/api/supply/inventory'), get('/api/chat/stats')]);
+  const K = k.kpis;
+  const KPI_LABEL = {
+    produccion_t:'Producción', superficie_cosechada_ha:'Superficie cosechada',
+    rendimiento_t_ha:'Rendimiento', costo_usd_t:'Costo por tonelada',
+    costo_usd_ha:'Costo por hectárea', humedad_media_pct:'Humedad media',
+    grado_A_pct:'Grano grado A', presion_plagas_pct:'Presión de plagas',
+    cumplimiento_objetivo_pct:'Cumplimiento del objetivo'};
+  const t = (key,dec=1)=>{const v=K[key]; return v?tile(
+    KPI_LABEL[key]||key.replace(/_/g,' '),
+    fmt(v.value,dec), v.unit, v.change_pct, v.lower_is_better):''};
+  el.innerHTML = `
+  <div class="grid g4">
+    ${t('produccion_t',0)}${t('rendimiento_t_ha',2)}${t('costo_usd_t',0)}${t('cumplimiento_objetivo_pct',0)}
+  </div>
+  <div class="grid g4" style="margin-top:0">
+    ${tile('Lotes en riesgo alto', risk.summary.ALTO, 'de '+risk.alerts.length)}
+    ${tile('Superficie en riesgo', fmt0(risk.hectares_at_risk), 'ha')}
+    ${tile('Insumos a reponer', inv.skus_at_risk, 'SKU')}
+    ${tile('Contención del bot', fmt(bot.containment_rate_pct), '%')}
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Producción mensual</h2>
+      <p class="sub">Toneladas cosechadas por mes.</p><div id="c1"></div></div>
+    <div class="card"><h2>Costo unitario</h2>
+      <p class="sub">USD por tonelada cosechada, por mes.</p><div id="c2"></div></div>
+  </div>
+  <div class="card"><h2>Alertas de plaga con mayor riesgo</h2>
+    <p class="sub">Probabilidad de superar el umbral de daño económico en ${risk.horizon_days} días. Motor: ${esc(risk.model)}.</p>
+    <div class="scroll">${riskTable(risk.alerts.slice(0,8))}</div></div>`;
+  const s = await get('/api/analytics/series');
+  document.getElementById('c1').innerHTML = lineChart(s.series,{x:'period',y:'tonnage',label:'Producción mensual en toneladas'});
+  document.getElementById('c2').innerHTML = lineChart(s.series,{x:'period',y:'cost_usd_t',color:'var(--s2)',label:'Costo por tonelada'});
+  wireLine(document.getElementById('c1'),'t',0);
+  wireLine(document.getElementById('c2'),'USD/t',2);
+};
+
+function riskTable(alerts){
+  if(!alerts.length) return '<p class="sub">Sin alertas.</p>';
+  return `<table><thead><tr><th>Lote</th><th>Cultivo</th><th>Plaga</th>
+    <th class="num">Riesgo</th><th>Nivel</th><th class="num">GDD vs. umbral</th>
+    <th class="num">Superficie</th><th>Acción sugerida</th></tr></thead><tbody>
+    ${alerts.map(a=>`<tr>
+      <td>${esc(a.field)}</td><td>${esc(a.crop)}</td>
+      <td>${esc(a.common_name)}<br><span style="color:var(--muted);font-size:11.5px;font-style:italic">${esc(a.species)}</span></td>
+      <td class="num">${fmt(a.risk*100,0)}%</td>
+      <td><span class="badge ${a.band.toLowerCase()}">${a.band==='ALTO'?'●':a.band==='MEDIO'?'◐':'○'} ${a.band}</span></td>
+      <td class="num">${fmt0(a.phenology_pct)}%</td>
+      <td class="num">${fmt0(a.area_ha)} ha</td>
+      <td style="max-width:280px;color:var(--ink-2);font-size:12.5px">${esc(a.recommendation)}</td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+TABS.cadena = async el => {
+  const [net, rt, inv] = await Promise.all([
+    get('/api/supply/network'), get('/api/supply/routes'), get('/api/supply/inventory')]);
+  el.innerHTML = `
+  <div class="grid g4">
+    ${tile('Costo logístico', fmt0(net.logistics_cost_usd), 'USD')}
+    ${tile('Costo por tonelada', fmt(net.cost_per_ton_usd,2), 'USD/t')}
+    ${tile('Tonelaje entregado', fmt0(net.delivered_tons), 't')}
+    ${tile('Demanda sin cubrir', fmt0(net.unmet_value_usd), 'USD')}
+  </div>
+  <div class="card"><h2>Red óptima de acopio y despacho</h2>
+    <p class="sub">MILP resuelto con HiGHS. Estado: <b>${esc(net.status)}</b>.
+      Silos activos: ${net.silos_active.map(esc).join(', ')||'—'}.
+      Desglose: flete USD ${fmt0(net.freight_usd)} · acopio USD ${fmt0(net.handling_usd)} · costo fijo USD ${fmt0(net.fixed_usd)}.</p>
+    <div class="scroll"><table><thead><tr><th>Silo</th><th>Destino</th><th>Tipo</th>
+      <th class="num">Toneladas</th><th class="num">Distancia</th><th class="num">Flete</th><th class="num">Valor</th></tr></thead><tbody>
+      ${net.silo_to_plant.map(r=>`<tr><td>${esc(r.silo)}</td><td>${esc(r.destination)}</td><td>${esc(r.kind)}</td>
+        <td class="num">${fmt0(r.tons)}</td><td class="num">${fmt0(r.km)} km</td>
+        <td class="num">${fmt0(r.freight_usd)}</td><td class="num">${fmt0(r.value_usd)}</td></tr>`).join('')}
+    </tbody></table></div>
+    <details style="margin-top:12px"><summary>Ver asignación lote → silo (${net.field_to_silo.length} arcos)</summary>
+    <div class="scroll" style="margin-top:8px"><table><thead><tr><th>Lote</th><th>Cultivo</th><th>Silo</th>
+      <th class="num">Toneladas</th><th class="num">Distancia</th><th class="num">Flete</th></tr></thead><tbody>
+      ${net.field_to_silo.map(r=>`<tr><td>${esc(r.field)}</td><td>${esc(r.crop)}</td><td>${esc(r.silo)}</td>
+        <td class="num">${fmt0(r.tons)}</td><td class="num">${fmt0(r.km)} km</td><td class="num">${fmt0(r.freight_usd)}</td></tr>`).join('')}
+    </tbody></table></div></details>
+  </div>
+  <div class="card"><h2>Plan de despacho del día</h2>
+    <p class="sub">${rt.trips_planned} viajes · ${rt.vehicles_used}/${rt.vehicles_available} camiones ·
+      ${fmt0(rt.planned_tons)} t programadas · ${fmt0(rt.total_km)} km ·
+      USD ${fmt(rt.cost_per_ton_usd,2)}/t · utilización media ${fmt(rt.avg_utilization_pct)}%.
+      Backlog estimado: ${fmt(rt.backlog_days)} días.</p>
+    <div class="scroll"><table><thead><tr><th>Camión</th><th class="num">Viaje</th><th class="num">Carga</th>
+      <th>Utilización</th><th class="num">Km</th><th class="num">Costo</th><th>Paradas</th></tr></thead><tbody>
+      ${rt.routes.map(r=>`<tr><td>${esc(r.vehicle)}</td><td class="num">${r.trip}</td>
+        <td class="num">${fmt(r.load_t)} / ${fmt0(r.capacity_t)} t</td>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="bar-track">
+          <div class="bar-fill" style="width:${Math.min(100,r.utilization_pct)}%;background:var(--s1)"></div></div>
+          <span style="font-size:12px;color:var(--ink-2)">${fmt0(r.utilization_pct)}%</span></div></td>
+        <td class="num">${fmt0(r.km)}</td><td class="num">${fmt0(r.cost_usd)}</td>
+        <td style="font-size:12.5px;color:var(--ink-2)">${r.stops.map(esc).join(' → ')}</td></tr>`).join('')}
+    </tbody></table></div>
+  </div>
+  <div class="card"><h2>Política de inventario (s, Q)</h2>
+    <p class="sub">Nivel de servicio ${fmt(inv.service_level*100,0)}% (z = ${inv.z}).
+      Valor del stock: USD ${fmt0(inv.total_stock_value_usd)} · compra sugerida: USD ${fmt0(inv.total_suggested_purchase_usd)}.</p>
+    <div class="scroll"><table><thead><tr><th>SKU</th><th>Insumo</th><th class="num">Stock</th>
+      <th class="num">Punto de reorden</th><th class="num">Stock de seguridad</th><th class="num">EOQ</th>
+      <th class="num">Cobertura</th><th>Estado</th><th class="num">Compra sugerida</th></tr></thead><tbody>
+      ${inv.items.map(i=>`<tr><td style="font-variant-numeric:tabular-nums">${esc(i.sku)}</td><td>${esc(i.name)}</td>
+        <td class="num">${fmt0(i.on_hand)}</td><td class="num">${fmt0(i.reorder_point)}</td>
+        <td class="num">${fmt0(i.safety_stock)}</td><td class="num">${fmt0(i.eoq)}</td>
+        <td class="num">${fmt0(i.days_of_cover)} d</td>
+        <td><span class="badge ${i.status==='CRÍTICO'?'critico':i.status==='REPONER'?'reponer':'ok'}">${
+          i.status==='CRÍTICO'?'●':i.status==='REPONER'?'◐':'○'} ${esc(i.status)}</span></td>
+        <td class="num">${i.suggested_order_qty?fmt0(i.suggested_order_qty):'—'}</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="note">Punto de reorden = demanda durante el lead time + z·σ√L. EOQ = √(2·D·S / H) con H = costo unitario × tasa de mantenimiento.</p>
+  </div>`;
+};
+
+TABS.plagas = async el => {
+  const risk = await get('/api/pest/risk');
+  const bands = ['ALTO','MEDIO','BAJO'];
+  el.innerHTML = `
+  <div class="grid g4">
+    ${tile('Riesgo alto', risk.summary.ALTO, 'combinaciones lote-plaga')}
+    ${tile('Riesgo medio', risk.summary.MEDIO, 'combinaciones')}
+    ${tile('Riesgo bajo', risk.summary.BAJO, 'combinaciones')}
+    ${tile('Superficie en riesgo', fmt0(risk.hectares_at_risk), 'ha')}
+  </div>
+  <div class="card"><h2>Mapa de calor por plaga y nivel de riesgo</h2>
+    <p class="sub">Horizonte de ${risk.horizon_days} días · motor: ${esc(risk.model)}${
+      risk.model_trained_at?` · entrenado el ${esc(risk.model_trained_at)}`:''}.</p>
+    <div class="legend">
+      <span><i style="background:var(--critical)"></i>● Alto (≥65%)</span>
+      <span><i style="background:var(--serious)"></i>◐ Medio (35–65%)</span>
+      <span><i style="background:var(--good)"></i>○ Bajo (&lt;35%)</span></div>
+    <div class="scroll">${pestMatrix(risk.alerts, bands)}</div>
+  </div>
+  <div class="card"><h2>Alertas priorizadas</h2>
+    <p class="sub">Ordenadas por riesgo y superficie expuesta.</p>
+    <div class="scroll">${riskTable(risk.alerts.slice(0,25))}</div>
+    <p class="note">El modelo combina acumulación de grados-día por especie con variables climáticas
+      móviles y la última lectura de monitoreo. La recomendación no reemplaza el monitoreo a campo:
+      lo dirige hacia donde importa.</p></div>`;
+};
+
+function pestMatrix(alerts, bands){
+  const species=[...new Set(alerts.map(a=>a.common_name))];
+  const counts={}; species.forEach(s=>counts[s]={ALTO:0,MEDIO:0,BAJO:0,ha:0});
+  alerts.forEach(a=>{counts[a.common_name][a.band]++; if(a.band!=='BAJO') counts[a.common_name].ha+=a.area_ha;});
+  return `<table><thead><tr><th>Plaga</th><th class="num">● Alto</th><th class="num">◐ Medio</th>
+    <th class="num">○ Bajo</th><th class="num">Superficie expuesta</th><th>Distribución</th></tr></thead><tbody>
+    ${species.map(s=>{const c=counts[s], t=c.ALTO+c.MEDIO+c.BAJO;
+      return `<tr><td>${esc(s)}</td><td class="num">${c.ALTO}</td><td class="num">${c.MEDIO}</td>
+      <td class="num">${c.BAJO}</td><td class="num">${fmt0(c.ha)} ha</td>
+      <td><div style="display:flex;height:8px;border-radius:3px;overflow:hidden;min-width:120px;gap:2px">
+        ${c.ALTO?`<div style="width:${c.ALTO/t*100}%;background:var(--critical)"></div>`:''}
+        ${c.MEDIO?`<div style="width:${c.MEDIO/t*100}%;background:var(--serious)"></div>`:''}
+        ${c.BAJO?`<div style="width:${c.BAJO/t*100}%;background:var(--good)"></div>`:''}
+      </div></td></tr>`;}).join('')}</tbody></table>`;
+}
+
+TABS.produccion = async el => {
+  const [y, an, fc, s] = await Promise.all([
+    get('/api/analytics/yield'), get('/api/analytics/anomalies'),
+    get('/api/analytics/forecast'), get('/api/analytics/series')]);
+  el.innerHTML = `
+  <div class="grid g4">
+    ${tile('Lotes bajo objetivo', y.underperforming.length, 'de '+y.fields.length)}
+    ${tile('Brecha vs. objetivo', fmt0(y.total_gap_t), 't')}
+    ${tile('Pronóstico próximo ciclo', fmt0(fc.total_forecast_tonnage||0), 't')}
+    ${tile('Error del pronóstico', fmt(fc.mae_t_ha||0,2), 't/ha (MAE)')}
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Rendimiento mensual</h2><p class="sub">Toneladas por hectárea.</p><div id="p1"></div></div>
+    <div class="card"><h2>Humedad de recepción</h2><p class="sub">Porcentaje medio del grano cosechado.</p><div id="p2"></div></div>
+  </div>
+  <div class="card"><h2>Cumplimiento del rinde objetivo por lote</h2>
+    <p class="sub">Rendimiento medio contra el objetivo del cultivo. Azul: en o sobre objetivo. Rojo: por debajo.</p>
+    <div class="legend"><span><i style="background:var(--pole-hi)"></i>En o sobre objetivo</span>
+      <span><i style="background:var(--pole-lo)"></i>Por debajo del objetivo</span></div>
+    <div id="p3"></div>
+    <p class="note">Correlación entre presión de plagas y cumplimiento: <b>${y.pest_vs_attainment_corr ?? '—'}</b>. ${esc(y.corr_note)}</p>
+  </div>
+  <div class="card"><h2>Cosechas anómalas</h2>
+    <p class="sub">Isolation Forest sobre ${an.n_records??0} registros. ${esc(an.note||'')}</p>
+    <div class="scroll"><table><thead><tr><th>Lote</th><th>Cultivo</th><th>Fecha</th><th class="num">Score</th>
+      <th class="num">Rinde</th><th class="num">Costo</th><th class="num">Humedad</th><th>Motivo</th></tr></thead><tbody>
+      ${(an.anomalies||[]).map(a=>`<tr><td>${esc(a.field)}</td><td>${esc(a.crop)}</td><td>${esc(a.date)}</td>
+        <td class="num">${fmt(a.score,2)}</td><td class="num">${fmt(a.yield_t_ha,2)} t/ha</td>
+        <td class="num">${fmt0(a.cost_usd_t)} USD/t</td><td class="num">${fmt(a.moisture_pct)}%</td>
+        <td style="font-size:12.5px;color:var(--ink-2)">${esc(a.reason)}</td></tr>`).join('')||
+        '<tr><td colspan="8" style="color:var(--muted)">Sin anomalías detectadas.</td></tr>'}
+    </tbody></table></div></div>
+  <div class="card"><h2>Pronóstico de rendimiento del próximo ciclo</h2>
+    <p class="sub">${esc(fc.model||'')} · validación cruzada de ${fc.cv_folds??'—'} particiones ·
+      MAE ${fmt(fc.mae_t_ha||0,3)} t/ha · R² ${fc.r2??'—'} ·
+      mejora del ${fmt(fc.improvement_vs_mean_pct||0)}% sobre predecir la media.</p>
+    <div class="scroll"><table><thead><tr><th>Lote</th><th>Cultivo</th><th class="num">Superficie</th>
+      <th class="num">Último rinde</th><th class="num">Pronóstico</th><th class="num">Banda</th>
+      <th class="num">Objetivo</th><th class="num">Producción esperada</th></tr></thead><tbody>
+      ${(fc.forecast||[]).slice(0,15).map(r=>`<tr><td>${esc(r.field)}</td><td>${esc(r.crop)}</td>
+        <td class="num">${fmt0(r.area_ha)} ha</td><td class="num">${fmt(r.last_yield_t_ha,2)}</td>
+        <td class="num"><b>${fmt(r.forecast_t_ha,2)}</b></td>
+        <td class="num" style="color:var(--muted)">${fmt(r.interval_t_ha[0],2)}–${fmt(r.interval_t_ha[1],2)}</td>
+        <td class="num">${fmt(r.target_yield,2)}</td><td class="num">${fmt0(r.forecast_tonnage)} t</td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="note">${esc(fc.note||'')} ${esc(fc.caveat||'')}</p></div>`;
+  document.getElementById('p1').innerHTML = lineChart(s.series,{x:'period',y:'yield_t_ha',label:'Rendimiento mensual'});
+  document.getElementById('p2').innerHTML = lineChart(s.series,{x:'period',y:'moisture_pct',color:'var(--s3)',label:'Humedad media'});
+  wireLine(document.getElementById('p1'),'t/ha',2);
+  wireLine(document.getElementById('p2'),'%',1);
+  const p3=document.getElementById('p3');
+  p3.innerHTML = divergingBars(y.fields.map(f=>({
+    name:f.field, value:f.attainment_pct, sub:`${f.crop} · ${f.region}`,
+    extra:`${fmt(f.yield_t_ha,2)} de ${fmt(f.target_yield,2)} t/ha · presión de plagas ${fmt(f.pest_pressure)}%`})));
+  wireBars(p3);
+};
+
+TABS.chat = async el => {
+  const [st, kb] = await Promise.all([get('/api/chat/stats'), get('/api/chat/kb')]);
+  el.innerHTML = `
+  <div class="grid g4">
+    ${tile('Tickets totales', fmt0(st.tickets_total), '')}
+    ${tile('Resueltos por el bot', fmt0(st.auto_resolved), '')}
+    ${tile('Tasa de contención', fmt(st.containment_rate_pct), '%')}
+    ${tile('Derivados a humano', fmt0(st.escalated), '')}
+  </div>
+  <div class="grid g2">
+    <div class="card"><h2>Conversación</h2>
+      <p class="sub">El bot consulta la base real: pedidos, stock, precios y riesgo de plagas.</p>
+      <div class="chat"><div class="msgs" id="msgs">
+        <div class="msg bot">Hola. Puedo ayudarte con el estado de un pedido, precios, stock de insumos,
+          calidad del grano o manejo de plagas. ¿Qué necesitás?</div>
+      </div></div>
+      <div class="composer">
+        <input id="q" placeholder="Escribí tu consulta…" autocomplete="off">
+        <button id="send">Enviar</button></div>
+      <div class="chips">
+        ${['¿dónde está mi pedido 42?','¿cuánto está la tonelada de soya?','tengo cogollero en el maíz',
+           '¿tienen stock de urea?','quiero hablar con una persona']
+          .map(q=>`<button data-q="${esc(q)}">${esc(q)}</button>`).join('')}
+      </div>
+    </div>
+    <div class="card"><h2>Volumen por intención</h2>
+      <p class="sub">Distribución del histórico de tickets.</p>
+      <table><tbody>${st.by_intent.map(i=>{
+        const max=Math.max(...st.by_intent.map(x=>x.n));
+        const NAME={estado_pedido:'Estado de pedido',precios:'Precios',calidad:'Calidad del grano',
+          logistica:'Logística',plagas:'Plagas',insumos:'Insumos',pagos:'Pagos',
+          reclamo:'Reclamos',contacto:'Contacto humano',horarios:'Horarios'};
+        return `<tr><td>${esc(NAME[i.intent]||i.intent)}</td><td style="width:55%"><div class="bar-track" style="height:8px">
+          <div class="bar-fill" style="width:${i.n/max*100}%;background:var(--s1)"></div></div></td>
+          <td class="num" style="width:60px">${i.n}</td></tr>`;}).join('')}</tbody></table>
+      <h2 style="margin-top:20px">Por canal</h2>
+      <table><tbody>${st.by_channel.map(c=>`<tr><td>${esc(c.channel)}</td>
+        <td class="num">${c.n}</td></tr>`).join('')}</tbody></table>
+    </div>
+  </div>
+  <div class="card"><h2>Base de conocimiento (${kb.articles.length} artículos)</h2>
+    <p class="sub">Fuente de las respuestas informativas, recuperadas por similitud TF-IDF.</p>
+    <details><summary>Ver artículos</summary><div class="scroll" style="margin-top:8px">
+      <table><thead><tr><th>Intención</th><th>Pregunta</th><th>Respuesta</th></tr></thead><tbody>
+      ${kb.articles.map(a=>`<tr><td>${esc(a.intent)}</td><td>${esc(a.question)}</td>
+        <td style="color:var(--ink-2);font-size:12.5px">${esc(a.answer)}</td></tr>`).join('')}
+      </tbody></table></div></details></div>`;
+
+  const msgs=document.getElementById('msgs'), q=document.getElementById('q');
+  async function send(text){
+    if(!text.trim()) return;
+    msgs.insertAdjacentHTML('beforeend',`<div class="msg user">${esc(text)}</div>`);
+    q.value=''; msgs.scrollTop=msgs.scrollHeight;
+    const th=document.createElement('div'); th.className='msg bot'; th.textContent='…';
+    msgs.appendChild(th); msgs.scrollTop=msgs.scrollHeight;
+    try{
+      const r=await post('/api/chat/message',{message:text,channel:'web',persist:false});
+      th.innerHTML=`${esc(r.answer)}<div class="meta">intención: ${esc(r.intent)} ·
+        confianza ${(r.confidence*100).toFixed(0)}% · origen: ${esc(r.source)}${r.escalated?' · derivado a un ejecutivo':''}</div>`;
+    }catch(e){ th.innerHTML=`<span style="color:var(--critical)">Error: ${esc(e.message)}</span>`; }
+    msgs.scrollTop=msgs.scrollHeight;
+  }
+  document.getElementById('send').onclick=()=>send(q.value);
+  q.addEventListener('keydown',e=>{if(e.key==='Enter')send(q.value)});
+  el.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>send(b.dataset.q));
+};
+
+/* ---------- router ---------- */
+const panel=document.getElementById('panel');
+async function show(name){
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===name));
+  panel.innerHTML='<div class="spin">Cargando…</div>';
+  try{ await TABS[name](panel); }
+  catch(e){ panel.innerHTML=`<div class="err"><b>No se pudo cargar la pestaña.</b><br>${esc(e.message)}<br>
+    <span style="color:var(--muted)">Verificá que el servidor esté corriendo y que la base tenga datos
+    (<code>python run.py seed &amp;&amp; python run.py train</code>).</span></div>`; }
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.tab));
+document.getElementById('theme').onclick=()=>{
+  const cur=document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light' : cur==='light' ? 'dark'
+    : (matchMedia('(prefers-color-scheme: dark)').matches ? 'light' : 'dark');
+  document.documentElement.setAttribute('data-theme',next);
+};
+show('resumen');
+</script>
+</body>
+</html>

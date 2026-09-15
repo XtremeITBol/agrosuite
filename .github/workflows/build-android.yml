@@ -1,0 +1,105 @@
+name: Compilar AgroSuite.apk
+
+# Los runners de Ubuntu de GitHub ya traen el Android SDK instalado, así que
+# el APK se compila sin instalar nada localmente ni usar Android Studio.
+# Es gratis en repositorios públicos.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:        # botón "Run workflow" en la pestaña Actions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Necesario para que softprops/action-gh-release pueda crear la release:
+    # en los repositorios nuevos el GITHUB_TOKEN viene de sólo lectura.
+    permissions:
+      contents: write
+    env:
+      # Los secretos no pueden evaluarse directamente en un `if`; se pasan por
+      # el contexto env, que es el patrón que GitHub documenta.
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          # Versión compatible con el plugin de Android 8.5.2 declarado en
+          # android/build.gradle. El proyecto no incluye wrapper, así que se
+          # usa el gradle que instala esta acción.
+          gradle-version: '8.7'
+
+      - name: Compilar APK de depuración
+        working-directory: android
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      # El APK de depuración se firma con la clave estándar de Android: se
+      # instala por sideload sin trámites. Es lo que necesita una finca para
+      # repartir la app entre su gente.
+      - name: Renombrar el APK
+        run: |
+          mkdir -p salida
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             salida/AgroSuite-Campo-debug.apk
+          ls -lh salida/
+
+      - name: Verificar que el APK sea válido
+        run: |
+          # aapt confirma que el paquete se armó bien y que el manifiesto
+          # declara lo que esperamos; si falta un permiso o el minSdk quedó
+          # mal, se detecta acá y no en el teléfono del usuario.
+          AAPT=$(find $ANDROID_HOME/build-tools -name aapt2 | sort | tail -1)
+          echo "Usando: $AAPT"
+          "$AAPT" dump badging salida/AgroSuite-Campo-debug.apk > info.txt
+          cat info.txt | head -20
+          grep -q "package: name='bo.agrosuite.campo'" info.txt
+          grep -q "android.permission.ACCESS_FINE_LOCATION" info.txt
+          grep -q "android.permission.CAMERA" info.txt
+          grep -q "sdkVersion:'24'" info.txt
+          echo "APK verificado correctamente."
+
+      # --- release firmado (opcional) ---
+      # Sólo corre si configuraste los secretos del repositorio. Necesario
+      # únicamente para publicar en Play Store; para uso interno alcanza el
+      # APK de depuración de arriba.
+      - name: Compilar APK de release firmado
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: android
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASS: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > agrosuite.keystore
+          gradle assembleRelease --no-daemon \
+            -PAGRO_KEYSTORE="$PWD/agrosuite.keystore" \
+            -PAGRO_STORE_PASSWORD="$STORE_PASS" \
+            -PAGRO_KEY_ALIAS="$KEY_ALIAS" \
+            -PAGRO_KEY_PASSWORD="$KEY_PASS"
+          cp app/build/outputs/apk/release/app-release.apk \
+             ../salida/AgroSuite-Campo-release.apk
+          rm -f agrosuite.keystore
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AgroSuite-Android
+          path: salida/*.apk
+          retention-days: 30
+
+      - name: Publicar en la release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: salida/*.apk

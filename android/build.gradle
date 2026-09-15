@@ -1,0 +1,8 @@
+// Configuración raíz del proyecto Android.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.layout.buildDirectory
+}

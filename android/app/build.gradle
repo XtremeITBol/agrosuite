@@ -1,0 +1,65 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'bo.agrosuite.campo'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "bo.agrosuite.campo"
+        minSdk 24              // Android 7.0: desde ahí existe network_security_config
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    // La firma de release sólo se declara si el workflow inyectó el keystore.
+    // Debe ir ANTES de buildTypes: Gradle evalúa este bloque en orden y
+    // buildTypes referencia signingConfigs.release.
+    signingConfigs {
+        if (project.hasProperty('AGRO_KEYSTORE')) {
+            release {
+                storeFile file(project.property('AGRO_KEYSTORE'))
+                storePassword project.property('AGRO_STORE_PASSWORD')
+                keyAlias project.property('AGRO_KEY_ALIAS')
+                keyPassword project.property('AGRO_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // Se firma con la clave de depuración estándar de Android: permite
+            // instalar por sideload sin trámites, que es lo que una finca
+            // necesita para repartir la app internamente.
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                          'proguard-rules.pro'
+            if (project.hasProperty('AGRO_KEYSTORE')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        // Un aviso de lint no debe frenar la entrega del APK a la finca.
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'androidx.core:core:1.13.1'
+}

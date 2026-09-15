@@ -1,0 +1,23 @@
+# AgroSuite — dependencias
+#
+# Deliberadamente mínimas: todo lo pesado (solver MILP, modelos) sale de
+# scipy y scikit-learn, que ya se necesitan de todos modos. No hay servicios
+# de pago ni API keys obligatorias.
+#
+#   pip install -r requirements.txt
+
+flask>=3.0            # API REST y servidor del tablero
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11           # solver MILP (HiGHS) para la red logística
+scikit-learn>=1.4     # plagas, chatbot, anomalías, pronóstico
+joblib>=1.3           # persistencia del modelo de plagas
+httpx>=0.27           # cliente de Open-Meteo y adaptador LLM opcional
+cryptography>=42.0    # certificado TLS propio de la finca (agrosuite/certs.py)
+
+# Base de datos: sqlite3 (biblioteca estándar de Python) — sin dependencia.
+# Pruebas: unittest (biblioteca estándar) — ejecutar con
+#   python -m unittest discover -s tests -v
+#
+# Opcional, para producción:
+# gunicorn>=21.2      # servidor WSGI (el de Flask es sólo para desarrollo)

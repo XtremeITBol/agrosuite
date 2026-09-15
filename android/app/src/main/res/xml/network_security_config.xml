@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Este archivo es LA razón por la que el APK existe.
+
+  Desde Android 7 (API 24), las apps ignoran por defecto las autoridades
+  certificadoras que el usuario instala a mano. Chrome sí las respeta para
+  navegar, pero un WebView dentro de una app no: la app tiene que declarar
+  explícitamente que confía en ellas.
+
+  Sin este archivo, el WebView rechazaría el certificado del servidor de la
+  finca aunque el usuario ya hubiera instalado la CA en el teléfono, y la app
+  no podría conectarse.
+
+  Se confía en las CA del sistema Y en las instaladas por el usuario. Nunca se
+  desactiva la validación: un certificado inválido sigue siendo rechazado, y la
+  app muestra un mensaje explicando el paso de instalación.
+
+  `cleartextTrafficPermitted` queda en true sólo para redes privadas, para que
+  el modo limitado por http:// siga funcionando mientras se configura la CA.
+-->
+<network-security-config>
+
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Rangos de red privada: es donde vive el servidor de la finca. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+        <domain includeSubdomains="true">172.16.0.0</domain>
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+
+</network-security-config>
