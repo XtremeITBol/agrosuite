@@ -31,6 +31,12 @@ jobs:
 
       - name: Configurar Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Google descontinuó el paquete "tools" (reemplazado por
+          # cmdline-tools); si no se listan los paquetes explícitamente, la
+          # acción intenta instalarlo igual, sdkmanager no lo encuentra y el
+          # paso falla con "exit code 1" aunque el resto se vea bien.
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
 
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
