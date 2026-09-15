@@ -138,9 +138,16 @@ if __name__ == "__main__":
         banner("AgroSuite no pudo iniciar")
         traceback.print_exc()
         print("\n   Copiá este mensaje completo para reportar el problema.")
-        # Sin esto la consola se cierra al instante y el usuario no ve el error.
-        try:
-            input("\n   Presioná Enter para cerrar…")
-        except EOFError:
+        # Sin esto la consola se cierra al instante y el usuario no ve el
+        # error. Pero sólo tiene sentido esperar Enter si hay alguien del
+        # otro lado: si stdin no es una consola interactiva (arranque
+        # automatizado, servicio, verificación en CI) input() puede quedarse
+        # colgado indefinidamente en vez de recibir EOF.
+        if sys.stdin is not None and sys.stdin.isatty():
+            try:
+                input("\n   Presioná Enter para cerrar…")
+            except EOFError:
+                time.sleep(30)
+        else:
             time.sleep(30)
         sys.exit(1)

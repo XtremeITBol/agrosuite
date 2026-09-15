@@ -51,7 +51,11 @@ excludes = [
     "matplotlib", "tkinter", "IPython", "notebook", "jupyter", "pytest",
     "PyQt5", "PyQt6", "PySide2", "PySide6", "wx", "sphinx", "docutils",
     "PIL.ImageQt", "sklearn.externals.array_api_compat.torch",
-    "test", "unittest", "pydoc_data", "lib2to3",
+    # "unittest" NO va acá: numpy.testing lo importa en tiempo de carga (vía
+    # scipy._external.array_api_compat), y ese import ocurre igual aunque la
+    # app nunca corra pruebas. Excluirlo hacía crashear el .exe con
+    # "ModuleNotFoundError: No module named 'unittest'" al importar sklearn.
+    "test", "pydoc_data", "lib2to3",
 ]
 
 a = Analysis(
