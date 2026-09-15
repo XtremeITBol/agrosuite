@@ -28,6 +28,19 @@ warnings.filterwarnings("ignore")
 if not getattr(sys, "frozen", False):
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Cuando la consola de Windows usa una code page como cp1252 (frecuente en
+# instalaciones en español) o cuando la salida no es una consola real sino un
+# archivo/pipe (como en la verificación automática del build), Python elige
+# esa codificación para stdout/stderr en vez de UTF-8. Los caracteres de este
+# archivo (─, —, …) no existen en cp1252 y el primer print() revienta con
+# UnicodeEncodeError antes de que el servidor llegue a levantar.
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+        except Exception:
+            pass
+
 
 LINE = "─" * 62
 
