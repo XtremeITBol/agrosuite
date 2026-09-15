@@ -72,7 +72,9 @@ jobs:
           grep -q "package: name='bo.agrosuite.campo'" info.txt
           grep -q "android.permission.ACCESS_FINE_LOCATION" info.txt
           grep -q "android.permission.CAMERA" info.txt
-          grep -q "sdkVersion:'24'" info.txt
+          # aapt2 imprime "minSdkVersion:'24'" (S mayúscula); grep es sensible
+          # a mayúsculas, así que "sdkVersion:'24'" en minúscula nunca calzaba.
+          grep -q "minSdkVersion:'24'" info.txt
           echo "APK verificado correctamente."
 
       # --- release firmado (opcional) ---
